@@ -9,9 +9,9 @@
 
    * ~(blob #!rest bytes)~ :: construct a blob from the
         provided bytes (left to right).
-   * ~(u8vector->blob vec)~:: construct a blob from an u8vector.
+   * ~(u8vector->blob vec)~ :: construct a blob from an u8vector.
 
-   * ~(mmap->blob map) :: construct a blob from a mmap. 
+   * ~(mmap->blob map)~ :: construct a blob from a mmap. 
 
    * ~(string->blob str)~ :: construct a blob from the
         provided string. The str is copied.
