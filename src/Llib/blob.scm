@@ -2,7 +2,7 @@
    (include "blob.sch")
    (export
       (class %blob
-         ;;u8vector or string
+         ;;u8vector, string, or mmap
          data)
       +big-endian+::symbol
       +little-endian+::symbol
@@ -63,8 +63,10 @@
       (f64-list->blob::%blob lst::pair-nil)
       (string->blob::%blob str::bstring)
       (string->blob!::%blob str::bstring)
-      (blob->string blob::%blob)))
-
+      (blob->string blob::%blob)
+      (u8vector->blob::%blob vec::u8vector)
+      (mmap->blob::%blob map::mmap)))
+   
 
 (define (pow256 x)
    (cond ((= x 0)
@@ -88,6 +90,8 @@
                  (fixnum->uint8 (llong->fixnum ,v1)))
                 ((bignum? ,v1)
                  (fixnum->uint8 (bignum->fixnum ,v1)))
+                ((char? ,v1)
+                 (fixnum->uint8 (char->integer ,v1)))
                 (else
                  (error "->uint8" "argument not an integer" ,val))))))
 
@@ -143,7 +147,9 @@
    (let ((data-copy (cond ((u8vector? (-> blob data))
                            (u8vector-copy (-> blob data)))
                           ((string? (-> blob data))
-                           (string-copy (-> blob data))))))
+                           (string-copy (-> blob data)))
+                          ((mmap? (-> blob data))
+                           (string-copy (blob->string blob))))))
       (instantiate::%blob (data data-copy))))
 
 ; (define (blob-copy! source::%blob source-start::long target::%blob
@@ -217,6 +223,8 @@
           (u8vector-length (-> blob data)))
          ((string? (-> blob data))
           (string-length (-> blob data)))
+         ((mmap? (-> blob data))
+          (mmap-length (-> blob data)))
          (else (error "blob-length" "unknown blob type" blob))))
 
 (define (blob=? blob1::%blob blob2::%blob)
@@ -243,7 +251,9 @@
    (let ((byte (cond ((u8vector? (-> blob data))
                       (u8vector-ref (-> blob data) index))
                      ((string? (-> blob data))
-                       (->uint8 (char->integer (string-ref (-> blob data) index)))))))
+                      (->uint8 (char->integer (string-ref (-> blob data) index))))
+                     ((mmap? (-> blob data))
+                      (->uint8 ($mmap-ref (-> blob data) index))))))
       (cond-expand
          (bigloo-jvm
           (bit-and #x00ff (uint8->fixnum byte)))
@@ -254,21 +264,28 @@
     (let ((byte (cond ((u8vector? (-> blob data))
                       (u8vector-ref (-> blob data) index))
                      ((string? (-> blob data))
-                      (->uint8 (char->integer (string-ref (-> blob data) index)))))))
+                      (->uint8 (char->integer (string-ref (-> blob data) index))))
+                     ((mmap? (-> blob data))
+                      (->uint8 ($mmap-ref (-> blob data) index))))))
        (int8->fixnum (uint8->int8 byte))))
 
 (define (blob-u8-set! blob::%blob index val::uint8)
    (cond ((u8vector? (-> blob data))
           (u8vector-set! (-> blob data) index val))
          ((string? (-> blob data))
-          (string-set! (-> blob data) index  (integer->char (->fixnum val))))))
+          (string-set! (-> blob data) index  (integer->char (->fixnum val))))
+         ((mmap? (-> blob data))
+          ($mmap-set! (-> blob data) index (integer->char (->fixnum val))))))
 
 (define (blob-s8-set! blob::%blob index val::int8)
    (cond ((u8vector? (-> blob data))
           (u8vector-set! (-> blob data) index val))
          ((string? (-> blob data))
           (string-set! (-> blob data) index
-             (integer->char  (->fixnum  (int8->uint8 val)))))))
+             (integer->char  (->fixnum  (int8->uint8 val)))))
+         ((mmap? (-> blob data))
+          ($mmap-set! (-> blob data) index
+             (integer->char (->fixnum (int8->uint8 val)))))))
 
 (define (blob-bytes-set! size endianness blob index val)
    (let ((posrep (if (< val 0) (+ (pow256 size) val)
@@ -666,6 +683,9 @@
          ((string? (-> blob data))
           (map! (lambda (v) (let ((b (char->integer v))) (if (< b 0) (+ 256 b) b)))
              (string->list (-> blob data))))
+         ((mmap? (-> blob data))
+          (map! (lambda (v) (let ((b (char->integer v))) (if (< b 0) (+ 256 b) b)))
+             (string->list  (blob->string blob))))
          (else
           (error "blob->u8-list" "unkown blob type" blob))))
 
@@ -764,12 +784,19 @@
 
 (define (blob->string blob::%blob)
    (cond ((string? (-> blob data))
-          string)
-         ((u8vector? (-> blob data))
+          (-> blob data))
+         (else
           (do ((i::long 0 (+fx i 1))
                (res (make-string (blob-length blob))))
               ((=fx i (blob-length blob)) res)
               (string-set! res i (integer->char (blob-u8-ref blob i)))))))
+
+(define (u8vector->blob::%blob vec::u8vector)
+   (instantiate::%blob (data vec)))
+
+(define (mmap->blob::%blob map::mmap)
+   (instantiate::%blob (data map)))
+
 
 
 (define-method (object-equal? obj::%blob b)
