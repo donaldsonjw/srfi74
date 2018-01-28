@@ -1,0 +1,23 @@
+* SRFI 74: Octet-Addressed Binary Blocks 
+
+** Description
+   The srfi74 library is an implementation of [[https://srfi.schemers.org/srfi-74/srfi-74.html][SRFI 74]] for Bigloo. It
+   implements all of the defined functions and macros as well as a few
+   extensions.
+
+** Extensions
+
+   * src_scheme{(blob #!rest bytes)} :: construct a blob from the
+        provided bytes (left to right).
+   * src_scheme{(string->blob str)} :: construct a blob from the
+        provided string. The str is copied.
+   * src_scheme{(string->blob! str)} :: construct a blob from the
+        provided string. The str is shared.
+   * src_scheme{(blob-f32-ref blob index)} :: returns the real encoded
+        as a 32 bit float found in the blob at index.  
+   * src_scheme{(blob-f32-set! blob index val)} :: sets val as a 32 bit float in the blob at index.  
+   * src_scheme{(blob-f64-ref blob index)} :: returns the real encoded
+        as a 64 bit float found in the blob at index.  
+   * src_scheme{(blob-f64-set! blob index val)} :: sets val as a 64 bit float in the blob at index.  
+
+
