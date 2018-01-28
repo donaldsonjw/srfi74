@@ -26,44 +26,44 @@
         
    * ~(blob->f32-list blob)~ :: create a list of reals from the 32 bit floats in blob.
 
-   * ~(f32list->blob lst) :: create a blob from a list of reals encoded as 32 bit floats.
+   * ~(f32list->blob lst)~ :: create a blob from a list of reals encoded as 32 bit floats.
         
    * ~(blob->f64-list blob)~ :: create a list of reals from the 64 bit floats in blob.
 
-   * ~(f64list->blob lst) :: create a blob from a list of reals encoded as 64 bit floats.
+   * ~(f64list->blob lst)~ :: create a blob from a list of reals encoded as 64 bit floats.
         
 ** Building
     Both the Bigloo native and jvm backends are supported. To build the native library, execute
     
-    ~ make ~
+    ~make~
     
     To build the JVM library, execute
 
-    ~ make jvm ~
+    ~make jvm~
 
     To build both, execute
  
-    ~ make all ~
+    ~make all~
 
 ** Installation
    To install the library, execute 
 
-   ~ make install ~
+   ~make install~
 
    This by default installs the library into /usr/lib/bigloo. If you have Bigloo installed to a different prefix, execute 
    
-   ~ make install DESTDIR=/path/prefix ~
+   ~make install DESTDIR=/path/prefix~
 
    This will result in the library being installed /path/prefix/lib/bigloo.
 
 ** Tests
    To run the tests, you will need to install [[https://github.com/donaldsonjw/btest][btest]]. Once this is done, the native tests can be executed with 
    
-   ~ make test ~
+   ~make test~
 
    and the jvm tests can be executed with 
 
-   ~ make jtest ~
+   ~make jtest~
 
 
    
