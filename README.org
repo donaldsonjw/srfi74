@@ -9,6 +9,10 @@
 
    * ~(blob #!rest bytes)~ :: construct a blob from the
         provided bytes (left to right).
+   * ~(u8vector->blob vec)~:: construct a blob from an u8vector.
+
+   * ~(mmap->blob map) :: construct a blob from a mmap. 
+
    * ~(string->blob str)~ :: construct a blob from the
         provided string. The str is copied.
    * ~(string->blob! str)~ :: construct a blob from the
@@ -19,5 +23,50 @@
    * ~(blob-f64-ref blob index)~ :: returns the real encoded
         as a 64 bit float found in the blob at index.  
    * ~(blob-f64-set! blob index val)~ :: sets val as a 64 bit float in the blob at index.  
+        
+   * ~(blob->f32-list blob)~ :: create a list of reals from the 32 bit floats in blob.
+
+   * ~(f32list->blob lst) :: create a blob from a list of reals encoded as 32 bit floats.
+        
+   * ~(blob->f64-list blob)~ :: create a list of reals from the 64 bit floats in blob.
+
+   * ~(f64list->blob lst) :: create a blob from a list of reals encoded as 64 bit floats.
+        
+** Building
+    Both the Bigloo native and jvm backends are supported. To build the native library, execute
+    
+    ~ make ~
+    
+    To build the JVM library, execute
+
+    ~ make jvm ~
+
+    To build both, execute
+ 
+    ~ make all ~
+
+** Installation
+   To install the library, execute 
+
+   ~ make install ~
+
+   This by default installs the library into /usr/lib/bigloo. If you have Bigloo installed to a different prefix, execute 
+   
+   ~ make install DESTDIR=/path/prefix ~
+
+   This will result in the library being installed /path/prefix/lib/bigloo.
+
+** Tests
+   To run the tests, you will need to install [[https://github.com/donaldsonjw/btest][btest]]. Once this is done, the native tests can be executed with 
+   
+   ~ make test ~
+
+   and the jvm tests can be executed with 
+
+   ~ make jtest ~
 
 
+   
+   
+
+      
