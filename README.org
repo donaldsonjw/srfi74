@@ -26,11 +26,11 @@
         
    * ~(blob->f32-list blob)~ :: create a list of reals from the 32 bit floats in blob.
 
-   * ~(f32list->blob lst)~ :: create a blob from a list of reals encoded as 32 bit floats.
+   * ~(f32-list->blob lst)~ :: create a blob from a list of reals encoded as 32 bit floats.
         
    * ~(blob->f64-list blob)~ :: create a list of reals from the 64 bit floats in blob.
 
-   * ~(f64list->blob lst)~ :: create a blob from a list of reals encoded as 64 bit floats.
+   * ~(f64-list->blob lst)~ :: create a blob from a list of reals encoded as 64 bit floats.
         
 ** Building
     Both the Bigloo native and jvm backends are supported. To build the native library, execute
