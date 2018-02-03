@@ -65,7 +65,9 @@
       (string->blob!::%blob str::bstring)
       (blob->string blob::%blob)
       (u8vector->blob::%blob vec::u8vector)
-      (mmap->blob::%blob map::mmap)))
+      (mmap->blob::%blob map::mmap)
+      (blob-str-ref blob::%blob index::long length::long)
+      (blob-str-set! blob::%blob index::long str::bstring)))
    
 
 (define (pow256 x)
@@ -797,6 +799,25 @@
 (define (mmap->blob::%blob map::mmap)
    (instantiate::%blob (data map)))
 
+
+(define (blob-str-ref blob::%blob index::long length::long)
+   (if (<= (+ index length) (blob-length blob))
+       (do ((i 0 (+fx i 1))
+            (res (make-string length)))
+           ((=fx i length) res)
+           (string-set! res i (integer->char (blob-u8-ref blob (+fx index i)))))
+       (error "blob-str-ref" "index or length out of bounds"
+          `(index ,index length ,length))))
+
+(define (blob-str-set! blob::%blob index::long str::bstring)
+   (let ((len (string-length str)))
+      (if (<= (+ index len) (blob-length blob))
+          (do ((i 0 (+fx i 1)))
+              ((=fx i len))
+              (blob-u8-set! blob (+ index i)
+                 (char->integer (string-ref str i))))
+          (error "blob-str-set!" "erroneous index or string length"
+             `(index ,index str ,str)))))
 
 
 (define-method (object-equal? obj::%blob b)

@@ -621,6 +621,22 @@
          (assert-equal? b b2)
          (assert-false (equal? b '(#xff #x21 #x05 #x00)))))
 
+   (test "blob-str-ref works"
+
+      (let ((b (string->blob "test string randome stuff")))
+         (assert-equal? (blob-str-ref b 5 6) "string")
+         (assert-equal? (blob-str-ref b 20 5) "stuff")
+         (assert-exception-thrown (blob-str-ref b 20 6) &error)))
+
+   (test "blob-str-set! works"
+      (let ((b (make-blob 10)))
+         (blob-str-set! b 4 "yay!")
+         (assert-equal? (blob-str-ref b 4 4) "yay!")
+         (blob-str-set! b 1 "dogs")
+         (assert-equal? (blob-str-ref b 1 7)
+            "dogsay!")
+         (assert-exception-thrown (blob-str-set! b 9 "boom!") &error)))
+
 
    ;;;; some adapted test from reference implementation
 
@@ -728,6 +744,7 @@
       (assert-equal? (blob->u8-list b3)
          '(1 2 3 4 1 2 3 4))
 
+      ;;          s  ss t ts l
       (blob-copy! b3 0 b3 2 6)
       
       (assert-equal? (blob->u8-list b3)

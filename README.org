@@ -31,6 +31,10 @@
    * ~(blob->f64-list blob)~ :: create a list of reals from the 64 bit floats in blob.
 
    * ~(f64-list->blob lst)~ :: create a blob from a list of reals encoded as 64 bit floats.
+ 
+   * ~(blob-str-ref blob index len)~ :: return the string starting at index with lenght len.
+
+   * ~(blob-str-set! blob index str)~ :: set the bytes starting at index to str. 
         
 ** Building
     Both the Bigloo native and jvm backends are supported. To build the native library, execute
