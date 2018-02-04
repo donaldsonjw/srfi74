@@ -67,7 +67,8 @@
       (u8vector->blob::%blob vec::u8vector)
       (mmap->blob::%blob map::mmap)
       (blob-str-ref blob::%blob index::long length::long)
-      (blob-str-set! blob::%blob index::long str::bstring)))
+      (blob-str-set! blob::%blob index::long str::bstring)
+      (blob-cstr-ref blob::%blob index::long)))
    
 
 (define (pow256 x)
@@ -818,6 +819,18 @@
                  (char->integer (string-ref str i))))
           (error "blob-str-set!" "erroneous index or string length"
              `(index ,index str ,str)))))
+
+(define-inline (find-cstr-length::long blob::%blob index::long)
+   (let loop ((i::long 0))
+      (if (< (+fx index i) (blob-length blob))
+          (if (= (blob-u8-ref blob (+fx index i)) 0)
+              i
+              (loop (+fx i 1)))
+          (error "find-cstr-length" "could not find nul char" index))))
+
+(define (blob-cstr-ref blob::%blob index::long)
+   (let ((strlen (find-cstr-length blob index)))
+      (blob-str-ref blob index strlen)))
 
 
 (define-method (object-equal? obj::%blob b)

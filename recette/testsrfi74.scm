@@ -637,6 +637,11 @@
             "dogsay!")
          (assert-exception-thrown (blob-str-set! b 9 "boom!") &error)))
 
+   (test "blob-cstr-ref works"
+      (let ((b1 (blob 100 111 103 110 97 98 98 105 116 0))
+            (b2 (blob 100 111 103 110 97 98 98 105 116)))
+         (assert-equal? (blob-cstr-ref b1 3) "nabbit")
+         (assert-exception-thrown (blob-cstr-ref b2 0) &error)))
 
    ;;;; some adapted test from reference implementation
 
