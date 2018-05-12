@@ -68,8 +68,11 @@
       (mmap->blob::%blob map::mmap)
       (blob-str-ref blob::%blob index::long length::long)
       (blob-str-set! blob::%blob index::long str::bstring)
-      (blob-cstr-ref blob::%blob index::long)))
-   
+      (blob-cstr-ref blob::%blob index::long)
+      (blob-bit-ref blob::%blob byte-index::long bit-index::long)
+      (blob-bits-set! blob::%blob byte-offset::long bit-offset::long num-bits::long  bits::long)
+      (blob-grow! blob::%blob len::long)
+      (blob-shrink! blob::%blob len::long)))
 
 (define (pow256 x)
    (cond ((= x 0)
@@ -155,32 +158,14 @@
                            (string-copy (blob->string blob))))))
       (instantiate::%blob (data data-copy))))
 
-; (define (blob-copy! source::%blob source-start::long target::%blob
-;            target-start::long n::long)
-;    (if (and (>= source-start 0)
-;             (<= (+ source-start n) (blob-length source))
-;             (>= target-start 0)
-;             (<= (+ target-start n) (blob-length target)))
-;        (cond  ((and (u8vector? (-> target data))
-;                     (u8vector? (-> source data)))
-;                (u8vector-copy! (-> target data) target-start (-> source data) source-start (+ source-start n)))
-;               (else
-;                (do ((si source-start (+ si 1))
-;                     (ti target-start (+ ti 1))
-;                     (i 0 (+ i 1)))
-;                    ((= i n))
-;                    (blob-u8-set! target ti (->uint8 (blob-u8-ref source si)))
-;                    )))
-       ; (error "blob-copy!" "invalid arguments" (format "blob-copy! ~a ~a ~a ~a ~a"
-       ;                                            source source-start target
-       ;                                            target-start n))))
 
 (define (blob-copy! source::%blob source-start::long target::%blob
            target-start::long n::long)
    (if (and (>=fx source-start 0)
             (<=fx (+ source-start n) (blob-length source))
             (>=fx target-start 0)
-            (<=fx (+ target-start n) (blob-length target)))
+            ;(<=fx (+ target-start n) (blob-length target))
+            )
        (let ((overlapping? (eq? (-> source data)
                               (-> target data))))
           (cond   ((and overlapping?
@@ -205,8 +190,7 @@
                                                   source source-start target
                                                   target-start n))))
 
-
-(define (byte? val)
+(define-inline (byte? val)
    (and (integer? val)
         (>= val 0)
         (< val 256)))
@@ -247,6 +231,116 @@
                    ((or (not res)
                         (=fx i (blob-length blob1))) res))))))
 
+(define-inline (string-grow! str::bstring len::long)
+   (let ((new-str (make-string len)))
+      (blit-string! str 0 new-str 0 (string-length str))
+      new-str))
+
+(define-inline (u8vector-resize! vec::u8vector len::long)
+   (let ((new-vec (make-u8vector len)))
+      (do ((i::long 0 (+fx i 1)))
+          ((=fx i (minfx len (u8vector-length vec))) new-vec)
+          (u8vector-set! new-vec i (u8vector-ref vec i)))))
+
+(define (blob-grow! blob::%blob len::long)
+   (cond ((> len (blob-length blob))
+          (cond ((string? (-> blob data))
+                 (set! (-> blob data) (string-grow! (-> blob data) len)))
+                ((u8vector? (-> blob data))
+                 (set! (-> blob data) (u8vector-resize! (-> blob data) len)))
+                ((mmap? (-> blob data))
+                 (error "blob-grow!" "cannot grow a mmap-based blob" blob)))  )
+         ((= len (blob-length blob))
+          blob)
+         (else
+          (error "blob-grow!" "len must be greater than current blob length" len))))
+
+
+(define (blob-shrink! blob::%blob len::long)
+   (cond ((< len (blob-length blob))
+          (cond ((string? (-> blob data))
+                 (set! (-> blob data) (string-shrink! (-> blob data) len)))
+                ((u8vector? (-> blob data))
+                 (set! (-> blob data) (u8vector-resize! (-> blob data) len)))
+                ((mmap? (-> blob data))
+                 (error "blob-shrink!" "cannot shrink a mmap-based blob" blob))))
+          ((= len (blob-length blob))
+           blob)
+          (else
+           (error "blob-shrink!" "len must be less than current blob length" blob))))
+
+;; return the bit value found in the blob starting at byte-index
+;; plus bit-index bits
+(define (blob-bit-ref blob::%blob byte-index bit-index)
+   (define-inline (bit-ref val bit-index)
+      (bit-rsh (bit-and val (bit-lsh 1  bit-index)) bit-index))
+   (let* ((extra-bytes (/fx bit-index 8))
+          (residual-bit-index  (- 7 (modulofx bit-index 8)))
+          (target-byte (blob-u8-ref blob (+ byte-index extra-bytes))))
+      (bit-ref target-byte residual-bit-index)))
+
+
+(define +max-number-of-bits-in-bits-set+ (bigloo-config 'elong-size))
+
+;; note this will only function correctly for the maximum num bits
+;; that will fit in a long
+;; bits are written in byte chunk pieces starting with the most significant bits
+;; and moving towards least significant bits
+(define (blob-bits-set! blob::%blob byte-offset::long bit-offset::long num-bits::long  bits::long)
+   (when (> num-bits +max-number-of-bits-in-bits-set+)
+      (error "blob-bits-set!"
+         (format "invalid arguments -- max number of bits is ~a" +max-number-of-bits-in-bits-set+)
+         num-bits))
+   
+   
+   ;; Determine the true byte index and residual bit off-set.
+   ;; In general, bit-offset can be greater than 8. 
+   (let* ((extra-bytes (/fx bit-offset 8))
+         (residual-bit-index (- 7 (modulofx bit-offset 8)))
+         (needed-bytes (+ byte-offset extra-bytes
+                          (if (> residual-bit-index 0) 1 0))))
+
+      (when (> needed-bytes (blob-length blob))
+         (blob-grow! blob (* 2 (+ (blob-length blob)
+                                  (- needed-bytes (blob-length blob))))))
+      
+      ;; loop writing out bits in byte-size chunks
+      ;; bits are written from most-significant to least-significant bits
+      (let loop  ((byte-index (+ byte-offset extra-bytes))
+                  (bit-index residual-bit-index)
+                  (source-bit-mask (- (bit-lsh 1 (+ residual-bit-index 1)) 1))
+                  (target-bit-mask (bit-and #xff (bit-not (- (bit-lsh 1 (+ residual-bit-index 1)) 1))))
+                  (remaining-num-bits num-bits)
+                  (remaining-bits bits))
+         
+         (when (> remaining-num-bits 0)
+
+            ;; determine the number of bits to write, bits remaining, and target byte value
+            ;; also determine the values for the next iteration of the loop
+            (let* ((bits-available (+ bit-index 1))
+                   (bits-to-write (if (> remaining-num-bits bits-available) bits-available remaining-num-bits))
+                   (target-val (if (< bits-to-write bits-available)
+                                   (bit-lsh remaining-bits (- bits-available bits-to-write))
+                                   (bit-rsh remaining-bits (- remaining-num-bits bits-available))))
+                   (next-byte-index (+ byte-index (if (< bits-to-write bits-available) 0 1)))
+                   (next-bit-index (if (< bits-to-write bits-available) (- bit-index bits-to-write) 7))
+                   (next-source-bit-mask (- (bit-lsh 1 (+ next-bit-index 1)) 1))
+                   (next-target-bit-mask (bit-and #xff (bit-not next-source-bit-mask)))
+                   (next-remaining-num-bits (- remaining-num-bits bits-to-write))
+                   (next-remaining-bits (bit-and  (bit-not (bit-lsh source-bit-mask next-remaining-num-bits)) remaining-bits)))
+ 
+               ;; write out the current byte
+               (blob-u8-set! blob byte-index
+                  (bit-or (bit-and (blob-u8-ref blob byte-index) target-bit-mask)
+                     target-val))
+               
+               (loop next-byte-index
+                  next-bit-index
+                  next-source-bit-mask
+                  next-target-bit-mask
+                  next-remaining-num-bits
+                  next-remaining-bits))))))
+
 (define (blob-u8-ref::bint blob::%blob index)
    (when (>=fx index  (blob-length blob))
       (error "blob-u8-ref" "index out of bounds" index))
@@ -273,6 +367,11 @@
        (int8->fixnum (uint8->int8 byte))))
 
 (define (blob-u8-set! blob::%blob index val::uint8)
+   
+   (when (>= index (blob-length blob))
+      (blob-grow! blob (* 2 (+ (blob-length blob)
+                               (- index (blob-length blob))))))
+   
    (cond ((u8vector? (-> blob data))
           (u8vector-set! (-> blob data) index val))
          ((string? (-> blob data))
@@ -312,7 +411,7 @@
                           (quotient curr 256)))
                     #unspecified)))
             (else
-             (error "blob-bytes-set!" "unkown endianness" endianness)))))
+             (error "blob-bytes-set!" "unknown endianness" endianness)))))
 
 (define (blob-uint-ref size endianness blob::%blob index)
    (cond ((eq? endianness +big-endian+)
@@ -334,7 +433,7 @@
                     (+ res (* bm (blob-u8-ref blob (+ index i)))))
                   res)))
          (else
-          (error "blob-uint-ref" "unkown endianness" endianness))))
+          (error "blob-uint-ref" "unknown endianness" endianness))))
 
 (define (blob-uint-set! size endianness blob index val)
    ;; todo add checks on val
@@ -366,7 +465,7 @@
                         (+ res (* bm byte))))
                   (if signed  (- 0 (- bm res)) res))))
          (else
-          (error "blob-sint-ref" "unkown endianness" endianness))))
+          (error "blob-sint-ref" "unknown endianness" endianness))))
 
 (define (blob-sint-set! size endianness blob index val)
    ;;; todo add checks on val
@@ -713,7 +812,6 @@
              (cons (blob-sint-ref size endianness blob i) res))
           (reverse! res))))
 
-
 (define (uint-list->blob size endianness lst)
    (let ((len (length lst))
          (res (make-blob (* size (length lst)))))
@@ -812,13 +910,10 @@
 
 (define (blob-str-set! blob::%blob index::long str::bstring)
    (let ((len (string-length str)))
-      (if (<= (+ index len) (blob-length blob))
-          (do ((i 0 (+fx i 1)))
-              ((=fx i len))
-              (blob-u8-set! blob (+ index i)
-                 (char->integer (string-ref str i))))
-          (error "blob-str-set!" "erroneous index or string length"
-             `(index ,index str ,str)))))
+      (do ((i 0 (+fx i 1)))
+          ((=fx i len))
+          (blob-u8-set! blob (+ index i)
+             (char->integer (string-ref str i))))))
 
 (define-inline (find-cstr-length::long blob::%blob index::long)
    (let loop ((i::long 0))
@@ -837,3 +932,4 @@
    (and (blob? b)
         (blob=? obj b)))      
 
+ 

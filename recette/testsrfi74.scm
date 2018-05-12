@@ -634,14 +634,66 @@
          (assert-equal? (blob-str-ref b 4 4) "yay!")
          (blob-str-set! b 1 "dogs")
          (assert-equal? (blob-str-ref b 1 7)
-            "dogsay!")
-         (assert-exception-thrown (blob-str-set! b 9 "boom!") &error)))
+            "dogsay!")))
 
    (test "blob-cstr-ref works"
       (let ((b1 (blob 100 111 103 110 97 98 98 105 116 0))
             (b2 (blob 100 111 103 110 97 98 98 105 116)))
          (assert-equal? (blob-cstr-ref b1 3) "nabbit")
          (assert-exception-thrown (blob-cstr-ref b2 0) &error)))
+
+
+   (test "blob-bit-ref works"
+      (let ((b (blob #x3 #xf0)))
+         (assert= (blob-bit-ref b 0 6) 1)
+         (assert= (blob-bit-ref b 0 1) 0)
+         (assert= (blob-bit-ref b 1 7) 0)
+         (assert= (blob-bit-ref b 1 0) 1)
+         (assert-exception-thrown (blob-bit-ref b 1 8) &error)))
+
+   (test "blob-bits-set! works"
+      (let ((b (make-blob 4))
+            (b2 (make-blob 1)))
+         (blob-bits-set! b 0 3 5 #b101)
+         (assert= (blob-bit-ref b 0 7) 1)
+         (assert= (blob-bit-ref b 0 6) 0)
+         (assert= (blob-bit-ref b 0 5) 1)
+         (assert= (blob-bit-ref b 0 4) 0)
+         (assert= (blob-bit-ref b 0 3) 0)
+         (assert= (blob-bit-ref b 0 2) 0)
+         (assert= (blob-bit-ref b 0 1) 0)
+         (assert= (blob-bit-ref b 0 0) 0)
+         (blob-bits-set! b2 0 0 2 1) 
+         (assert= (blob-bit-ref b2 0 0) 0)
+         (assert= (blob-bit-ref b2 0 1) 1)
+         (assert-exception-thrown (blob-bits-set! b 0 0 65 #xFFFFFFFFFFFFFF)
+            &error)))
+
+   (test "blob-grow! works"
+      (let ((b1 (make-blob 1))
+            (b2 (string->blob "test")))
+         (assert= (blob-length b1) 1)
+         (blob-grow! b1 4)
+         (assert= (blob-length b1) 4)
+         (assert-exception-thrown (blob-grow! b1 3) &error)
+         (assert= (blob-length b2) 4)
+         (blob-grow! b2 10)
+         (assert= (blob-length b2) 10)))
+
+
+   (test "blob-shrink! works"
+      (let ((b1 (make-blob 4))
+            (b2 (string->blob "test")))
+         (assert= (blob-length b1) 4)
+         (blob-shrink! b1 1)
+         (assert= (blob-length b1) 1)
+         (assert-exception-thrown (blob-shrink! b1 3) &error)
+         (assert= (blob-length b2) 4)
+         (blob-shrink! b2 2)
+         (assert= (blob-length b2) 2)
+         (assert-equal? (blob-u8-ref b2 1) (char->integer #\e))))
+
+   
 
    ;;;; some adapted test from reference implementation
 

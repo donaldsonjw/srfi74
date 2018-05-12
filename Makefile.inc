@@ -236,7 +236,7 @@ $(EUCLASSDIR):
 
 
 check-syntax: .afile
-	$(BIGLOO) -afile .afile -syntax-check ${CHK_SOURCES}
+	$(BIGLOO) $(BCOMMONFLAGS) -afile .afile -syntax-check ${CHK_SOURCES}
 
 
 install: all
