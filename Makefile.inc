@@ -133,7 +133,7 @@ manual-pdf : $(DOCSRCS)
 .recettejfile: $(TESTSRCS)
 	$(BGLJFILE) -pbase recette -o $@  -I recette  $(_TESTSRCSWOUTDIR)
 
-.etags: $(BIGLOOSRCS) $(TESTSRCS) src/Llib/*.sch
+.etags: $(BIGLOOSRCS) $(TESTSRCS) $(wildcard src/Llib/*.sch)
 	$(BGLTAGS) -o $@ $^
 
 heap: $(DISTDIR)/$(LIBNAME).heap
@@ -170,8 +170,8 @@ libj: init jheap heap jar_s jar_u jar_es jar_eu
 
 init: $(DISTDIR)/$(LIBNAME).init
 
-$(DISTDIR)/$(LIBNAME).init : $(DISTDIR)  src/Llib/*.sch src/Misc/$(LIBNAME).init.in src/Llib/*.sch
-	cat src/Llib/*.sch src/Misc/$(LIBNAME).init.in > $@
+$(DISTDIR)/$(LIBNAME).init : $(DISTDIR)  $(wildcard src/Llib/*.sch) src/Misc/$(LIBNAME).init.in
+	cat $(wildcard src/Llib/*.sch) src/Misc/$(LIBNAME).init.in > $@
 
 jar_s: $(SCLASSDIR)  $(DISTDIR) $(SAFECLASSES)
 	$(JAR) -cf $(DISTDIR)/$(LIBNAME)_s-$(VERSION).zip -C $(SCLASSDIR)/../../ .
